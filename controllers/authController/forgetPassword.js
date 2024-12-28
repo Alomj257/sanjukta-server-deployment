@@ -16,7 +16,7 @@ const forgetPassword = async (req, res, next) => {
         }
 
         if (findedUser.otp.otp && new Date(findedUser.otp.sendTime).getTime() > new Date().getTime()) {
-            const error = new Error(`Please wait until ${new Date(findedUser.otp.sendTime).toLocaleTimeString()}`);
+            const error = new Error('Please wait for 1 minuite');
             error.statusCode = 400;
             throw error;
         }
