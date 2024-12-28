@@ -22,6 +22,7 @@ const forgetPassword = async (req, res, next) => {
         }
 
         const otp = Math.floor(Math.random() * 90000) + 100000;
+        console.log(otp);
 
         const token = crypto.randomBytes(32).toString('hex');
 
