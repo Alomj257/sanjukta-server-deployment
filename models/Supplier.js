@@ -7,15 +7,12 @@ const SupplierSchema = new mongoose.Schema({
     },
     supplierAddress: {
         type: String,
-        required: true
     },
     email: {
         type: String,
-        required: true
     },
     gst: {
         type: String,
-        required: true
     },
     contactDetails: {
         type: String,
