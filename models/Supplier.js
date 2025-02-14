@@ -46,7 +46,7 @@ const SupplierSchema = new mongoose.Schema({
             }
         }
     ]
-});
+},{ timestamps: true });
 
 // Method to calculate total price of all items in a supplier
 SupplierSchema.methods.calculateTotalPrice = function() {
