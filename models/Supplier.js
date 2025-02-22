@@ -59,6 +59,10 @@
 const mongoose = require('mongoose');
 
 const SupplierSchema = new mongoose.Schema({
+    purchaseDate: {
+        type: Date,
+        required: true
+    },
     supplierName: {
         type: String,
         required: true
@@ -103,11 +107,7 @@ const SupplierSchema = new mongoose.Schema({
                 }
             }
         }
-    ],
-    purchaseDate: {
-        type: Date,
-        required: true
-    }
+    ]  
 },{ timestamps: true });
 
 SupplierSchema.methods.calculateTotalPrice = function() {

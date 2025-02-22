@@ -400,7 +400,7 @@ exports.getSuppliersByDateRange = async (req, res, next) => {
 
         const suppliers = await Supplier.find({
             purchaseDate: { $gte: startDate, $lte: endDate }
-        }).select('supplierName contactDetails items purchaseDate');
+        }).select('purchaseDate supplierName supplierAddress email gst contactDetails items ');
 
         const formattedSuppliers = suppliers.map(supplier => ({
             ...supplier.toObject(),
