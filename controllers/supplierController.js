@@ -192,19 +192,28 @@
 
 const Supplier = require('../models/Supplier');
 const Stock = require('../models/Stock');
+const moment = require('moment');
 
 // Add supplier
 exports.addSupplier = async (req, res, next) => {
-    const { supplierName, supplierAddress, email, gst, contactDetails, items, purchaseDate } = req.body;
-
     try {
+        const { supplierName, supplierAddress, email, gst, contactDetails, items, purchaseDate } = req.body;
+
+        // Validate and convert purchaseDate
+        if (!moment(purchaseDate, 'DD-MM-YYYY', true).isValid()) {
+            return res.status(400).json({ message: 'Invalid date format. Use DD-MM-YYYY' });
+        }
+        const formattedDate = moment(purchaseDate, 'DD-MM-YYYY').toDate();
+
+        // Calculate total price for each item
         items.forEach(item => {
             item.totalPrice = item.itemQuantity * item.pricePerItem;
         });
 
-        const supplier = new Supplier({ supplierName, supplierAddress, email, gst, contactDetails, items, purchaseDate });
+        const supplier = new Supplier({ supplierName, supplierAddress, email, gst, contactDetails, items, purchaseDate: formattedDate });
         await supplier.save();
 
+        // Update stock quantity
         for (let item of items) {
             await Stock.findOneAndUpdate(
                 { itemName: item.itemName.toLowerCase() },
@@ -230,28 +239,34 @@ exports.addSupplier = async (req, res, next) => {
 
 // Update supplier
 exports.updateSupplier = async (req, res, next) => {
-    const { id } = req.params;
-    const { supplierName, supplierAddress, email, gst, contactDetails, items, purchaseDate } = req.body;
-
     try {
+        const { id } = req.params;
+        const { supplierName, supplierAddress, email, gst, contactDetails, items, purchaseDate } = req.body;
+
+        console.log("Received Data:", req.body);
+        console.log("Received purchaseDate:", purchaseDate, "Type:", typeof purchaseDate);
+
         const supplier = await Supplier.findById(id);
         if (!supplier) {
-            const error = new Error('Supplier not found');
-            error.status = 404;
-            throw error;
+            return res.status(404).json({ message: 'Supplier not found' });
         }
 
+        // Validate and Convert purchaseDate
+        let formattedDate;
+        if (moment(purchaseDate, 'DD-MM-YYYY', true).isValid()) {
+            formattedDate = moment(purchaseDate, 'DD-MM-YYYY').toDate();
+        } else if (moment(purchaseDate, 'YYYY-MM-DD', true).isValid()) {
+            formattedDate = moment(purchaseDate, 'YYYY-MM-DD').toDate();
+        } else {
+            return res.status(400).json({ message: 'Invalid date format. Use DD-MM-YYYY or YYYY-MM-DD' });
+        }
+
+        // Recalculate total price for each item
         items.forEach(item => {
             item.totalPrice = item.itemQuantity * item.pricePerItem;
         });
 
-        supplier.supplierName = supplierName;
-        supplier.supplierAddress = supplierAddress;
-        supplier.email = email;
-        supplier.gst = gst;
-        supplier.contactDetails = contactDetails;
-        supplier.purchaseDate = purchaseDate;
-
+        // Adjust stock based on updated items
         for (let oldItem of supplier.items) {
             const newItem = items.find(item => item.itemName === oldItem.itemName);
             if (!newItem) {
@@ -287,9 +302,16 @@ exports.updateSupplier = async (req, res, next) => {
             }
         }
 
+        // Update supplier details
+        supplier.supplierName = supplierName;
+        supplier.supplierAddress = supplierAddress;
+        supplier.email = email;
+        supplier.gst = gst;
+        supplier.contactDetails = contactDetails;
+        supplier.purchaseDate = formattedDate;
         supplier.items = items;
-        await supplier.save();
 
+        await supplier.save();
         const totalSum = supplier.calculateTotalPrice();
 
         res.status(200).json({
@@ -298,22 +320,20 @@ exports.updateSupplier = async (req, res, next) => {
             totalSum
         });
     } catch (error) {
+        console.error("Error in updateSupplier:", error);
         next(error);
     }
 };
-
 // Delete supplier
 exports.deleteSupplier = async (req, res, next) => {
-    const { id } = req.params;
-
     try {
+        const { id } = req.params;
         const supplier = await Supplier.findById(id);
         if (!supplier) {
-            const error = new Error('Supplier not found');
-            error.status = 404;
-            throw error;
+            return res.status(404).json({ message: 'Supplier not found' });
         }
 
+        // Reduce stock quantity before deleting supplier
         for (let item of supplier.items) {
             await Stock.findOneAndUpdate(
                 { itemName: item.itemName.toLowerCase() },
@@ -344,21 +364,52 @@ exports.getAllSuppliers = async (req, res, next) => {
 
 // Get supplier by ID
 exports.getSupplierById = async (req, res, next) => {
-    const { id } = req.params;
-    
     try {
+        const { id } = req.params;
         const supplier = await Supplier.findById(id);
-    
+
         if (!supplier) {
-            const error = new Error('Supplier not found');
-            error.status = 404;
-            throw error;
+            return res.status(404).json({ message: 'Supplier not found' });
         }
-    
+
         const totalSum = supplier.calculateTotalPrice();
         res.status(200).json({
             message: 'Supplier details fetched successfully',
             supplier: { ...supplier.toObject(), totalSum }
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get suppliers by date range
+exports.getSuppliersByDateRange = async (req, res, next) => {
+    try {
+        let { fromDate, toDate } = req.query;
+
+        if (!fromDate || !toDate) {
+            return res.status(400).json({ message: 'Both fromDate and toDate are required' });
+        }
+
+        if (!moment(fromDate, 'DD-MM-YYYY', true).isValid() || !moment(toDate, 'DD-MM-YYYY', true).isValid()) {
+            return res.status(400).json({ message: 'Invalid date format. Use DD-MM-YYYY' });
+        }
+
+        let startDate = moment(fromDate, 'DD-MM-YYYY').startOf('day').toDate();
+        let endDate = moment(toDate, 'DD-MM-YYYY').endOf('day').toDate();
+
+        const suppliers = await Supplier.find({
+            purchaseDate: { $gte: startDate, $lte: endDate }
+        }).select('supplierName contactDetails items purchaseDate');
+
+        const formattedSuppliers = suppliers.map(supplier => ({
+            ...supplier.toObject(),
+            purchaseDate: moment(supplier.purchaseDate).format('DD-MM-YYYY')
+        }));
+
+        res.status(200).json({
+            message: 'Suppliers fetched successfully',
+            suppliers: formattedSuppliers
         });
     } catch (error) {
         next(error);
