@@ -196,70 +196,128 @@ exports.getStocksGroupByDate = async (req, res, next) => {
     next(error);
   }
 };
-// Generate Daily Stock Report
-exports.generateDailyStockReport = async (req, res, next) => {
+// // Generate Daily Stock Report
+// exports.generateDailyStockReport = async (req, res, next) => {
+//   try {
+//     const { sectionId, selectedDate } = req.params; // `selectedDate` will be passed in the format "YYYY-MM-DD"
+
+//     // Populate stocks with full stock data, including itemName
+//     const section = await Section.findById(sectionId).populate({
+//       path: 'stocks._id',
+//       model: 'Stock',
+//     });
+
+//     if (!section) {
+//       throw new Error("Section not found");
+//     }
+
+//     // Parse the selected date to ensure accurate comparison
+//     const selectedDateObj = new Date(selectedDate);
+//     selectedDateObj.setHours(0, 0, 0, 0); // Reset time to compare only date part
+
+//     // Filter stocks for the selected date
+//     const filteredStocks = section.stocks.filter(stock => {
+//       const stockDate = new Date(stock.date);
+//       return stockDate.toDateString() === selectedDateObj.toDateString(); // Compare dates only (ignores time)
+//     });
+
+//     // Aggregate the quantities for the filtered stocks
+//     const dailyReport = filteredStocks.reduce((acc, stock) => {
+//       const itemName = stock._id.itemName; // Correctly access itemName from the populated stock
+//       if (!acc[itemName]) {
+//         acc[itemName] = {
+//           itemName: itemName,  // Using itemName instead of stockName
+//           totalQty: 0,
+//           unit: stock.unit,
+//         };
+//       }
+//       acc[itemName].totalQty += stock.qty;  // Aggregate based on itemName
+//       return acc;
+//     }, {});
+
+//     // Convert to an array to send in response
+//     const report = Object.values(dailyReport);
+
+//     res.status(200).json({
+//       message: "Daily Stock Report generated successfully",
+//       dailyReport: report,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// // Generate Monthly Stock Report
+// exports.generateMonthlyStockReport = async (req, res, next) => {
+//   try {
+//     const { sectionId, selectedMonth } = req.params; // `selectedMonth` will be passed in the format "YYYY-MM"
+
+//     // Validate and parse selectedMonth
+//     const [year, month] = selectedMonth.split("-");
+//     if (!year || !month) {
+//       throw new Error("Invalid selectedMonth format. Expected 'YYYY-MM'.");
+//     }
+
+//     const startDate = new Date(year, month - 1, 1); // Start of the month
+//     const endDate = new Date(year, month, 0, 23, 59, 59, 999); // End of the month
+
+//     // Fetch section and populate stocks
+//     const section = await Section.findById(sectionId).populate({
+//       path: "stocks._id",
+//       model: "Stock",
+//     });
+
+//     if (!section) {
+//       throw new Error("Section not found");
+//     }
+
+//     // Filter stocks within the month
+//     const filteredStocks = section.stocks.filter(stock => {
+//       const stockDate = new Date(stock.date);
+//       return stockDate >= startDate && stockDate <= endDate;
+//     });
+
+//     // Aggregate the quantities for the filtered stocks
+//     const monthlyReport = filteredStocks.reduce((acc, stock) => {
+//       const itemName = stock._id.itemName; // Access itemName from populated stock
+//       if (!acc[itemName]) {
+//         acc[itemName] = {
+//           itemName: itemName,
+//           totalQty: 0,
+//           unit: stock.unit,
+//         };
+//       }
+//       acc[itemName].totalQty += stock.qty; // Aggregate based on itemName
+//       return acc;
+//     }, {});
+
+//     // Convert to an array to send in response
+//     const report = Object.values(monthlyReport);
+
+//     res.status(200).json({
+//       message: "Monthly Stock Report generated successfully",
+//       monthlyReport: report,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+// Generate Stock Report for a given date range
+exports.generateStockReport = async (req, res, next) => {
   try {
-    const { sectionId, selectedDate } = req.params; // `selectedDate` will be passed in the format "YYYY-MM-DD"
+    const { sectionId, fromDate, toDate } = req.params; // Dates in format "YYYY-MM-DD"
 
-    // Populate stocks with full stock data, including itemName
-    const section = await Section.findById(sectionId).populate({
-      path: 'stocks._id',
-      model: 'Stock',
-    });
-
-    if (!section) {
-      throw new Error("Section not found");
+    // Validate and parse dates
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+    if (isNaN(startDate) || isNaN(endDate)) {
+      throw new Error("Invalid date format. Expected 'YYYY-MM-DD'.");
     }
-
-    // Parse the selected date to ensure accurate comparison
-    const selectedDateObj = new Date(selectedDate);
-    selectedDateObj.setHours(0, 0, 0, 0); // Reset time to compare only date part
-
-    // Filter stocks for the selected date
-    const filteredStocks = section.stocks.filter(stock => {
-      const stockDate = new Date(stock.date);
-      return stockDate.toDateString() === selectedDateObj.toDateString(); // Compare dates only (ignores time)
-    });
-
-    // Aggregate the quantities for the filtered stocks
-    const dailyReport = filteredStocks.reduce((acc, stock) => {
-      const itemName = stock._id.itemName; // Correctly access itemName from the populated stock
-      if (!acc[itemName]) {
-        acc[itemName] = {
-          itemName: itemName,  // Using itemName instead of stockName
-          totalQty: 0,
-          unit: stock.unit,
-        };
-      }
-      acc[itemName].totalQty += stock.qty;  // Aggregate based on itemName
-      return acc;
-    }, {});
-
-    // Convert to an array to send in response
-    const report = Object.values(dailyReport);
-
-    res.status(200).json({
-      message: "Daily Stock Report generated successfully",
-      dailyReport: report,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Generate Monthly Stock Report
-exports.generateMonthlyStockReport = async (req, res, next) => {
-  try {
-    const { sectionId, selectedMonth } = req.params; // `selectedMonth` will be passed in the format "YYYY-MM"
-
-    // Validate and parse selectedMonth
-    const [year, month] = selectedMonth.split("-");
-    if (!year || !month) {
-      throw new Error("Invalid selectedMonth format. Expected 'YYYY-MM'.");
-    }
-
-    const startDate = new Date(year, month - 1, 1); // Start of the month
-    const endDate = new Date(year, month, 0, 23, 59, 59, 999); // End of the month
+    
+    // Set the time for accurate filtering
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
     // Fetch section and populate stocks
     const section = await Section.findById(sectionId).populate({
@@ -271,14 +329,14 @@ exports.generateMonthlyStockReport = async (req, res, next) => {
       throw new Error("Section not found");
     }
 
-    // Filter stocks within the month
+    // Filter stocks within the date range
     const filteredStocks = section.stocks.filter(stock => {
       const stockDate = new Date(stock.date);
       return stockDate >= startDate && stockDate <= endDate;
     });
 
     // Aggregate the quantities for the filtered stocks
-    const monthlyReport = filteredStocks.reduce((acc, stock) => {
+    const stockReport = filteredStocks.reduce((acc, stock) => {
       const itemName = stock._id.itemName; // Access itemName from populated stock
       if (!acc[itemName]) {
         acc[itemName] = {
@@ -292,11 +350,11 @@ exports.generateMonthlyStockReport = async (req, res, next) => {
     }, {});
 
     // Convert to an array to send in response
-    const report = Object.values(monthlyReport);
+    const report = Object.values(stockReport);
 
     res.status(200).json({
-      message: "Monthly Stock Report generated successfully",
-      monthlyReport: report,
+      message: "Stock Report generated successfully",
+      stockReport: report,
     });
   } catch (error) {
     next(error);
