@@ -196,7 +196,7 @@ exports.getStocksGroupByDate = async (req, res, next) => {
     next(error);
   }
 };
-// // Generate Daily Stock Report
+// Generate Daily Stock Report
 // exports.generateDailyStockReport = async (req, res, next) => {
 //   try {
 //     const { sectionId, selectedDate } = req.params; // `selectedDate` will be passed in the format "YYYY-MM-DD"
@@ -247,7 +247,7 @@ exports.getStocksGroupByDate = async (req, res, next) => {
 //   }
 // };
 
-// // Generate Monthly Stock Report
+// Generate Monthly Stock Report
 // exports.generateMonthlyStockReport = async (req, res, next) => {
 //   try {
 //     const { sectionId, selectedMonth } = req.params; // `selectedMonth` will be passed in the format "YYYY-MM"
